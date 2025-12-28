@@ -117,6 +117,7 @@ fun MainScreen(
     var apiUrl by remember { mutableStateOf(ConfigManager.apiUrl) }
     var apiKey by remember { mutableStateOf(ConfigManager.apiKey) }
     var model by remember { mutableStateOf(ConfigManager.model) }
+    var prompt by remember { mutableStateOf(ConfigManager.prompt) }
     var isServiceRunning by remember { mutableStateOf(VolumeKeyService.isRunning()) }
     
     Scaffold(
@@ -213,12 +214,23 @@ fun MainScreen(
                         singleLine = true
                     )
                     
+                    OutlinedTextField(
+                        value = prompt,
+                        onValueChange = { prompt = it },
+                        label = { Text("自定义Prompt") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 6,
+                        placeholder = { Text("请输入AI分析图片时使用的提示词...") }
+                    )
+                    
                     Button(
                         onClick = {
                             // 保存到ConfigManager
                             ConfigManager.apiUrl = apiUrl
                             ConfigManager.apiKey = apiKey
                             ConfigManager.model = model
+                            ConfigManager.prompt = prompt
                             // 同时更新AIService的内存配置
                             AIService.updateConfig(
                                 AIService.AIConfig(apiUrl, apiKey, model)

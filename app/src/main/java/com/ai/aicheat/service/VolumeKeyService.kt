@@ -4,10 +4,14 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
@@ -61,6 +65,7 @@ class VolumeKeyService : LifecycleService() {
     private var keyMonitorJob: Job? = null
     private var monitorProcess: Process? = null
     private var isProcessing = false  // 防止重复触发
+    private val mainHandler = Handler(Looper.getMainLooper())
     
     override fun onCreate() {
         super.onCreate()
@@ -208,6 +213,9 @@ class VolumeKeyService : LifecycleService() {
                     result.onSuccess { response ->
                         Log.d(TAG, "AI response: ${response.take(100)}")
                         OverlayService.showText(this@VolumeKeyService, response)
+                        
+                        // 使用Android原生API复制到剪贴板（必须在主线程执行）
+                        copyToClipboard(response)
                     }
                     
                     result.onFailure { error ->
@@ -235,6 +243,26 @@ class VolumeKeyService : LifecycleService() {
      */
     private fun onVolumeUpPressed() {
         OverlayService.hideText(this)
+    }
+    
+    /**
+     * 复制文本到剪贴板（使用Android原生API）
+     */
+    private fun copyToClipboard(text: String) {
+        mainHandler.post {
+            try {
+                val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clipData = ClipData.newPlainText("AI Response", text)
+                clipboardManager.setPrimaryClip(clipData)
+                Log.d(TAG, "AI response copied to clipboard successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to copy to clipboard", e)
+                // 如果原生API失败，尝试使用Root方式
+                lifecycleScope.launch {
+                    RootUtils.copyToClipboard(text)
+                }
+            }
+        }
     }
     
     override fun onDestroy() {
